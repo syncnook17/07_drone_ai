@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- virtualenv / tooling ---
+venv/
+.venv/
+.claude/
+.vscode/
+
+# --- build artifacts (สร้างใหม่จาก source ได้) ---
+build/_work/
+build/*.spec.bak
+dist/
+*.exe
+
+# --- runtime / งานของผู้ใช้ ---
+yolo_workspace/
+*.log
+
+# --- ข้อมูลดิบจากโดรน / ไฟล์ทดสอบ (ใหญ่ ไม่เข้า repo) ---
+picture_raw/
+video_raw/
+sample_photos/
+_test_out/
+_out/
+_vt/
+*.old_*
+*.mp4
+*.MP4
+*.LRF
+*.SRT
+
+# --- OS ---
+.DS_Store
+Thumbs.db

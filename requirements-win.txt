@@ -1,0 +1,16 @@
+# สำหรับสร้าง .exe บน Windows + Python 3.10 (เครื่องปลายทางอาจไม่มี GPU → torch CPU)
+# ติดตั้ง torch ก่อนด้วย index CPU:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# แล้วค่อย: pip install -r requirements-win.txt
+gradio>=6,<7
+gradio_image_annotation
+ultralytics
+opencv-python
+imageio-ffmpeg
+pywebview
+pyinstaller
+# ฟีเจอร์พิกัด/แผนที่ (ขั้น 6): ใช้ Pillow (มากับ ultralytics/torchvision) + matplotlib (มากับ ultralytics)
+#   อ่าน EXIF GPS + XMP drone-dji, parse .SRT, เขียน GeoJSON/KML/CSV เอง, แผนที่ = Leaflet โหลดจาก CDN
+#   ไม่มี dependency เพิ่ม
+# หมายเหตุ: PyInstaller spec / runtime hook อยู่ใน flow_exe.md §5
+# (collect_all: gradio, gradio_client, safehttpx, groovy, gradio_image_annotation, ultralytics + torchvision .pyd)

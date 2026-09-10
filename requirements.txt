@@ -1,0 +1,8 @@
+# dev บนเครื่องนี้ (Linux / Python 3.14) — รัน `python main.py` หรือ `python app.py`
+gradio
+gradio_image_annotation
+ultralytics
+opencv-python
+imageio-ffmpeg
+pywebview  # optional: ถ้าไม่มี main.py จะ fallback เปิด browser
+piexif     # dev-only: scripts/make_geo_photos.py สร้างภาพทดสอบที่มี EXIF GPS (ไม่ได้ใช้ตอนรันจริง)
