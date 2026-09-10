@@ -310,10 +310,16 @@ def step5_status():
 
 _SRC_UPLOAD = "อัปโหลดวิดีโอใหม่"
 _SRC_PHOTOS = "ใช้ชุดภาพถ่ายจากขั้นที่ 1"
+_SRC_UPLOAD_PHOTOS = "อัปโหลดชุดภาพถ่ายใหม่"
 
 
 def toggle_source(choice):
-    return gr.update(visible=choice == _SRC_UPLOAD)
+    # (กล่องอัปวิดีโอ, กล่อง .SRT, กล่องอัปภาพถ่าย)
+    return (
+        gr.update(visible=choice == _SRC_UPLOAD),
+        gr.update(visible=choice == _SRC_UPLOAD),
+        gr.update(visible=choice == _SRC_UPLOAD_PHOTOS),
+    )
 
 
 def _save_geo_opts(preset, hfov, merge_dist):
@@ -323,20 +329,51 @@ def _save_geo_opts(preset, hfov, merge_dist):
     SESSION.save()
 
 
-def do_detect(choice, uploaded_video, uploaded_srt, conf, iou, cfilter, preset, hfov, merge_dist):
+def _run_photo_detect(photos, conf, iou, cfilter):
+    gallery, report, geo_summary = process_photos(
+        photos, SESSION.model_path, output_dir(), conf, iou, cfilter,
+        SESSION.camera_preset, SESSION.manual_hfov, SESSION.merge_dist_m,
+    )
+    SESSION.geo_summary = geo_summary
+    SESSION.save()
+    return None, gallery, report
+
+
+def do_detect(choice, uploaded_video, uploaded_srt, uploaded_photos,
+              conf, iou, cfilter, preset, hfov, merge_dist):
     _save_geo_opts(preset, hfov, merge_dist)
 
     if choice == _SRC_PHOTOS:
         photos = SESSION.photo_files()
         if not photos:
             raise gr.Error("ยังไม่มีภาพถ่ายจากขั้นที่ 1 — เลือกโหมด \"ชุดภาพถ่าย\" ในขั้นที่ 1 ก่อน")
-        gallery, report, geo_summary = process_photos(
-            photos, SESSION.model_path, output_dir(), conf, iou, cfilter,
-            SESSION.camera_preset, SESSION.manual_hfov, SESSION.merge_dist_m,
-        )
-        SESSION.geo_summary = geo_summary
-        SESSION.save()
-        return None, gallery, report
+        return _run_photo_detect(photos, conf, iou, cfilter)
+
+    if choice == _SRC_UPLOAD_PHOTOS:
+        paths_in = [
+            f if isinstance(f, str) else getattr(f, "name", None) for f in (uploaded_photos or [])
+        ]
+        paths_in = [p for p in paths_in if p and os.path.exists(p)]
+        if not paths_in:
+            raise gr.Error("กรุณาอัปโหลดภาพถ่าย (.jpg) สำหรับตรวจจับ")
+        # คัดลอกเข้าโฟลเดอร์ของโปรแกรมก่อน (กัน temp ของ Gradio ถูกล้างระหว่างประมวลผล)
+        ddir = os.path.join(uploads_dir(), "detect_photos")
+        robust_rmtree(ddir)
+        os.makedirs(ddir, exist_ok=True)
+        staged = []
+        for i, src in enumerate(sorted(paths_in), 1):
+            ext = os.path.splitext(src)[1].lower()
+            if ext not in (".jpg", ".jpeg", ".png"):
+                ext = ".jpg"
+            dst = os.path.join(ddir, f"det_{i:05d}{ext}")
+            try:
+                shutil.copy(src, dst)
+                staged.append(dst)
+            except OSError:
+                pass
+        if not staged:
+            raise gr.Error("คัดลอกภาพไม่สำเร็จ")
+        return _run_photo_detect(staged, conf, iou, cfilter)
 
     if choice == _SRC_UPLOAD:
         video = uploaded_video
@@ -656,7 +693,7 @@ with gr.Blocks(title="คอร์สอบรม: เทรนโมเดล�
                     param_head("แหล่งข้อมูลที่จะตรวจจับ", "detect_source")
                     detect_source = gr.Radio(
                         ["ใช้วิดีโอเดิมจากขั้นที่ 1", "อัปโหลดวิดีโอใหม่",
-                         "ใช้ชุดภาพถ่ายจากขั้นที่ 1"],
+                         "ใช้ชุดภาพถ่ายจากขั้นที่ 1", "อัปโหลดชุดภาพถ่ายใหม่"],
                         value="ใช้วิดีโอเดิมจากขั้นที่ 1",
                         show_label=False,
                         container=False,
@@ -665,6 +702,11 @@ with gr.Blocks(title="คอร์สอบรม: เทรนโมเดล�
                     detect_srt_input = gr.File(
                         label="ไฟล์ .SRT ของวิดีโอใหม่ (ถ้ามี)", file_types=[".srt"],
                         file_count="single", type="filepath", visible=False,
+                    )
+                    detect_photos_input = gr.File(
+                        label="อัปโหลดภาพถ่ายใหม่ (.jpg ดิบจากโดรน หลายไฟล์)",
+                        file_count="multiple", file_types=["image"],
+                        type="filepath", visible=False,
                     )
                     param_head("Confidence Threshold", "conf")
                     conf_slider = gr.Slider(0.0, 1.0, value=0.25, step=0.05, show_label=False, container=False)
@@ -753,14 +795,14 @@ with gr.Blocks(title="คอร์สอบรม: เทรนโมเดล�
     next_4.click(lambda: gr.Tabs(selected=5), None, tabs).then(step5_status, None, [s5_status])
 
     detect_source.change(
-        toggle_source, [detect_source], [detect_video_input]
-    ).then(
-        lambda c: gr.update(visible=c == _SRC_UPLOAD), [detect_source], [detect_srt_input]
+        toggle_source, [detect_source],
+        [detect_video_input, detect_srt_input, detect_photos_input],
     )
     detect_btn.click(
         do_detect,
-        [detect_source, detect_video_input, detect_srt_input, conf_slider, iou_slider,
-         class_filter_input, camera_preset_dd, hfov_num, merge_dist_num],
+        [detect_source, detect_video_input, detect_srt_input, detect_photos_input,
+         conf_slider, iou_slider, class_filter_input,
+         camera_preset_dd, hfov_num, merge_dist_num],
         [video_output, photo_gallery_out, count_output],
     ).then(build_map_view, None, [s6_status, map_html, map_scatter, map_table, map_files])
 
