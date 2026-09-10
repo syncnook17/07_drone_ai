@@ -703,7 +703,17 @@ with gr.Blocks(title="คอร์สอบรม: เทรนโมเดล�
                     headers=["class", "จำนวนจุด"], label="สรุปจำนวนต่อ class",
                     interactive=False, wrap=True,
                 )
-            map_files = gr.File(label="ดาวน์โหลด: GeoJSON / KML / CSV", file_count="multiple")
+            save_local_btn = gr.Button(
+                "💾 บันทึกไฟล์แผนที่ลงเครื่อง (เลือกโฟลเดอร์)…", variant="primary"
+            )
+            gr.Markdown(
+                "กดปุ่มด้านบนแล้วเลือกโฟลเดอร์ปลายทาง — ไฟล์ GeoJSON / KML / CSV / map.html "
+                "จะถูกคัดลอกไปที่นั่น · (เปิดผ่านเบราว์เซอร์: ใช้รายการดาวน์โหลดด้านล่าง)",
+                elem_classes=["step-hint"],
+            )
+            map_files = gr.File(
+                label="ดาวน์โหลดทีละไฟล์: GeoJSON / KML / CSV / map.html", file_count="multiple"
+            )
 
     # component ที่ restore_values() คืนค่าให้ (ลำดับต้องตรงกับ tuple ใน restore_values)
     RESTORE_OUTPUTS = [
@@ -755,6 +765,21 @@ with gr.Blocks(title="คอร์สอบรม: เทรนโมเดล�
     ).then(build_map_view, None, [s6_status, map_html, map_scatter, map_table, map_files])
 
     map_refresh_btn.click(build_map_view, None, [s6_status, map_html, map_scatter, map_table, map_files])
+
+    save_local_btn.click(
+        None, None, None,
+        js="""async () => {
+            const api = window.pywebview && window.pywebview.api;
+            let msg;
+            if (!api || !api.save_map_outputs) {
+                msg = 'ปุ่มนี้ใช้ได้เฉพาะในหน้าต่างโปรแกรม — ถ้าเปิดผ่านเบราว์เซอร์ ให้ใช้รายการดาวน์โหลดด้านล่าง';
+            } else {
+                try { const r = await api.save_map_outputs(); msg = (r && r.msg) ? r.msg : 'เสร็จ'; }
+                catch (e) { msg = 'บันทึกไม่สำเร็จ: ' + e; }
+            }
+            window.alert(msg);
+        }""",
+    )
 
     # เปิดเข้าแต่ละแท็บ = ดึง state ล่าสุดมาแสดง
     tab2.select(step2_status, None, [s2_status, frame_gallery])

@@ -77,6 +77,44 @@ def _close_splash():
         pass
 
 
+class _DesktopAPI:
+    """บริดจ์ให้ปุ่มในหน้าเว็บเรียกหน้าต่าง 'เลือกที่บันทึกไฟล์' ของ Windows ได้
+    (เรียกจาก JS: window.pywebview.api.save_map_outputs())"""
+
+    _MAP_FILES = (
+        "detections.geojson", "detections.kml", "detections.csv",
+        "map.html", "map_scatter.png",
+    )
+
+    def save_map_outputs(self):
+        import webview
+
+        from core.state import output_dir
+
+        od = output_dir()
+        available = [n for n in self._MAP_FILES if os.path.exists(os.path.join(od, n))]
+        if not available:
+            return {"ok": False, "msg": "ยังไม่มีไฟล์แผนที่ — กด \"สร้างแผนที่\" ในขั้น 6 ก่อน"}
+        try:
+            win = webview.active_window() or webview.windows[0]
+            res = win.create_file_dialog(webview.FOLDER_DIALOG)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "msg": f"เปิดหน้าต่างเลือกโฟลเดอร์ไม่ได้: {e}"}
+        if not res:
+            return {"ok": False, "msg": "ยกเลิก"}
+        dest = res[0] if isinstance(res, (list, tuple)) else res
+        done = []
+        for n in available:
+            try:
+                shutil.copy(os.path.join(od, n), os.path.join(dest, n))
+                done.append(n)
+            except OSError:
+                pass
+        if not done:
+            return {"ok": False, "msg": f"บันทึกไม่สำเร็จ (เขียนไฟล์ที่ {dest} ไม่ได้)"}
+        return {"ok": True, "msg": f"บันทึก {len(done)} ไฟล์แล้วที่:  {dest}"}
+
+
 def main():
     if "--selftest" in sys.argv:
         from core.selftest import run
@@ -104,7 +142,14 @@ def main():
     try:
         import webview
 
-        webview.create_window("คอร์สอบรม CV — YOLOv8", url, width=1280, height=880)
+        # เปิดให้ WebView2 ดาวน์โหลดไฟล์ได้ (เผื่อ fallback) + บริดจ์ปุ่ม "บันทึกลงเครื่อง"
+        try:
+            webview.settings["ALLOW_DOWNLOADS"] = True
+        except Exception:
+            pass
+        webview.create_window(
+            "คอร์สอบรม CV — YOLOv8", url, width=1280, height=880, js_api=_DesktopAPI()
+        )
         webview.start()
     except Exception:
         # ไม่มี pywebview / WebView2 → เปิดใน browser แทน แล้วค้าง process ไว้
