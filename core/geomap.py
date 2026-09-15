@@ -253,7 +253,7 @@ def render_map_html(points: list[DetPoint], out_dir: str) -> str:
     return path
 
 
-def export_all(points: list[DetPoint], out_dir: str) -> dict:
+def export_all(points: list[DetPoint], out_dir: str, conf: float | None = None, iou: float | None = None) -> dict:
     """เขียนทุกไฟล์ + คืน dict สรุปสำหรับ session / UI"""
     os.makedirs(out_dir, exist_ok=True)
     geojson = write_geojson(points, out_dir)
@@ -272,6 +272,8 @@ def export_all(points: list[DetPoint], out_dir: str) -> dict:
         "per_class": per_class,
         "bbox": [min(lons), min(lats), max(lons), max(lats)] if points else None,
         "has_oblique": any(p.oblique for p in points),
+        "conf_used": conf,
+        "iou_used": iou,
         "files": {"geojson": geojson, "kml": kml, "csv": csv_path,
                   "map_html": map_html, "scatter": scatter},
     }

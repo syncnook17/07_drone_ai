@@ -13,6 +13,7 @@ venv/
 # --- build artifacts (สร้างใหม่จาก source ได้) ---
 build/_work/
 build/*.spec.bak
+build/DroneCVEdu/
 dist/
 *.exe
 

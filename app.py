@@ -428,6 +428,9 @@ def build_map_view():
     if bbox:
         status += (f"  ·  พื้นที่ ~lon {bbox[0]:.5f}–{bbox[2]:.5f}, "
                    f"lat {bbox[1]:.5f}–{bbox[3]:.5f}")
+    if gs.get("conf_used") is not None:
+        status += f"  ·  คำนวณด้วย conf ≥ {gs['conf_used']:g}, iou = {gs.get('iou_used'):g}"
+        status += "  (ถ้าเพิ่งปรับ threshold ในขั้นที่ 5 ต้องกด **ตรวจจับ** ใหม่ก่อน แผนที่จึงจะอัปเดต)"
     if gs.get("has_oblique"):
         status = "⚠️ บางภาพกล้องเอียงมาก พิกัดคลาดเคลื่อนสูง\n\n" + status
     scatter = gs["files"].get("scatter")

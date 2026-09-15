@@ -159,8 +159,12 @@ def process_video(
 
     geo_summary = None
     if geo_raw:
+        # กันเหนียว: ตัดจุดที่ conf ต่ำกว่า threshold ที่ผู้ใช้ตั้งไว้ออกอีกชั้น
+        # เผื่อกรณี tracker คืนค่าคะแนนจากเฟรมที่ผ่านการ recover ด้วยเกณฑ์ที่ต่ำกว่า
+        geo_raw = [r for r in geo_raw if r["conf"] >= conf]
+    if geo_raw:
         points = geomap.dedup_video(geo_raw)
-        geo_summary = geomap.export_all(points, session_dir)
+        geo_summary = geomap.export_all(points, session_dir, conf=conf, iou=iou)
         lines.append(f"📍 บันทึกพิกัดวัตถุ {geo_summary['n_points']} จุด — ไปแท็บ \"6. แผนที่\"")
         if geo_summary["has_oblique"]:
             lines.append("   (บางเฟรมกล้องเอียงมาก พิกัดอาจคลาดเคลื่อนสูง)")

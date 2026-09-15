@@ -109,8 +109,11 @@ def process_photos(
 
     geo_summary = None
     if geo_raw:
+        # กันเหนียว: ตัดจุดที่ conf ต่ำกว่า threshold ที่ผู้ใช้ตั้งไว้ออกอีกชั้น
+        geo_raw = [r for r in geo_raw if r["conf"] >= conf]
+    if geo_raw:
         points = geomap.dedup_photos(geo_raw, float(merge_dist_m or 2.0))
-        geo_summary = geomap.export_all(points, session_dir)
+        geo_summary = geomap.export_all(points, session_dir, conf=conf, iou=iou)
         lines.append(f"📍 พิกัดวัตถุ (รวมจุดซ้ำในรัศมี {merge_dist_m:g} ม.): {geo_summary['n_points']} จุด — ไปแท็บ \"6. แผนที่\"")
         if geo_summary["has_oblique"]:
             lines.append("   (บางภาพกล้องเอียงมาก พิกัดอาจคลาดเคลื่อนสูง)")
